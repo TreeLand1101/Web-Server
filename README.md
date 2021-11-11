@@ -1,8 +1,6 @@
 # Network-Programming-HW1
 ```` 
 git clone https://github.com/tryyyagain/Web-Server
-````
-````
 cd Web-Server
 make
 ./webserver
