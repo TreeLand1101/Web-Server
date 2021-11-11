@@ -1,9 +1,9 @@
-# Network-Programming-hw1-webserver
+# Network-Programming-HW1
 ```` 
-git clone https://github.com/tryyyagain/Network-Programming-hw1-webserver
+git clone https://github.com/tryyyagain/Web-server
 ````
 ````
-cd Network-Programming-hw1
+cd Web-server
 make
 ./webserver
 ````
