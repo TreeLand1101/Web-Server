@@ -5,6 +5,6 @@ git clone https://github.com/tryyyagain/Network-Programming-hw1
 ````
 cd Network-Programming-hw1
 make
-./webs
+./webserver
 ````
 open http://localhost:8080/ in firefox
