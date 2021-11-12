@@ -20,16 +20,15 @@
 #define MAX_LISTEN_QUEUE 16
 #define SEND_SIZE 70000
 
+/*The header in http packet */
 char imageheader[] = 
 	"HTTP/1.1 200 Ok\r\n"
 	"Content-Type: image/jpeg\r\n\r\n";
 char htmlheader[] = 
 	"HTTP/1.1 200 Ok\r\n"
 	"Content-Type: text/html; charset=UTF-8\r\n\r\n";
-char cssheader[] = 
-	"HTTP/1.1 200 Ok\r\n"
-	"Content-Type: text/css; charset=UTF-8\r\n\r\n";
-/*The header that loading image*/
+
+
 /*handle child process terminated*/
 void sigchld_handler(int signal){
 	pid_t pid;
@@ -41,6 +40,7 @@ void sigchld_handler(int signal){
 	return;
 }	
 
+/*get file from http packet and save it to local*/
 int writeFile(char *ptr,int fd_client){
 	int index = 0;
 	char name[256];
@@ -52,7 +52,7 @@ int writeFile(char *ptr,int fd_client){
 	//getboundary
 	ptr = strstr(ptr,"boundary=");
 	if(!ptr) return -1;
-	ptr += 9;	// boundary=
+	ptr += 9;			// boundary=
 	boundary[0] = '-';
 	boundary[1] = '-';
 	index = 2;
@@ -70,10 +70,9 @@ int writeFile(char *ptr,int fd_client){
 	//getName
 	ptr = strstr(ptr,"filename=");
 	if(!ptr) return -1;
-	ptr += 10;	// filename="
+	ptr += 10;			// filename="
 	
-	sprintf(name,"./client_%d_",fd_client);
-	index = strlen(name);
+	index = 0;
 	while(*ptr != '"'){
 		name[index++] = *ptr++;
 	}
@@ -87,18 +86,17 @@ int writeFile(char *ptr,int fd_client){
 	ptr = strstr(ptr,"\r\n\r\n");
 	ptr += 4;
 	end = strstr(ptr,boundary);
+	//end != null,text format
+	//end == null,not text format
 
 	if(end){
-		end -= 2; // \r\n
+		end -= 2; 		// \r\n
 		while(ptr != end){
 			fwrite(ptr++,1,1,fp);
 		}	
-		//printf("text format\n");	
 	} 
 	else{
 		fwrite(ptr,1,size,fp);
-		//printf("not text format\n");
-		//printf("%s\n",boundary);
 	}
 
 	fclose(fp);
@@ -111,24 +109,25 @@ int writeFile(char *ptr,int fd_client){
 int main(int argc, char *argv[]){
 
 	struct sockaddr_in server_addr, client_addr;
-	socklen_t sin_len = sizeof(client_addr);//length of cnt socket
-	int fd_server , fd_client;//file descriptor
+	socklen_t sin_len = sizeof(client_addr);	//length of cnt socket
+	int fd_server , fd_client;			//file descriptor
 	char buf[BUFFER_SIZE];
 	int fd;
 	int on = 1;
+	
+	//Process : build socket => bind port => listen => accept
 	
 	fd_server = socket(AF_INET, SOCK_STREAM,0);
 	if (fd_server < 0){
 		perror("socket");
 		exit(1);
 	}
-	/*means something went wrong*/
 	
 	setsockopt(fd_server, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(int));
 
 	server_addr.sin_family = AF_INET;
-	server_addr.sin_addr.s_addr = INADDR_ANY;
-	server_addr.sin_port = htons(PORT);
+	server_addr.sin_addr.s_addr = INADDR_ANY;	
+	server_addr.sin_port = htons(PORT);		//port number
 	
 	if (bind(fd_server, (struct sockaddr *) &server_addr, sizeof(server_addr)) == -1){
 		perror("Bind failed");
@@ -142,7 +141,8 @@ int main(int argc, char *argv[]){
 		close(fd_server);
 		exit(1);
 	}
-	signal(SIGCHLD ,sigchld_handler);
+	
+	signal(SIGCHLD ,sigchld_handler);	//prevent zombies 
 	
 	while(1){
 		fd_client = accept(fd_server, (struct sockaddr *) &client_addr, &sin_len);
@@ -153,13 +153,18 @@ int main(int argc, char *argv[]){
 		}
 		
 		printf("Client%d connection\n",fd_client);
-
-		if (!fork()){ //child process
+		
+		//child process
+		if (!fork()){ 
 			close(fd_server);
 			memset(buf,0,BUFFER_SIZE);
 			int byte = read(fd_client, buf, BUFFER_SIZE - 1);
 			//printf("CONTENT OF HTTP PACKET\n%s\n", buf);
 			
+			//handle http packet from client
+			//1.get cover image
+			//2.handle file from client
+			//3.other
 			if (!strncmp(buf,"GET /duoduo.png",13)){
 				printf("Request : GET\n");
 				write(fd_client, imageheader, sizeof(imageheader) - 1);
@@ -170,7 +175,7 @@ int main(int argc, char *argv[]){
 			else if (!strncmp(buf,"POST",4)){
 				printf("Request : POST\n");
 				if(writeFile(buf,fd_client) == -1){
-					printf("writeFile ERROR\n");
+					perror("Write file failed\n");
 				}
 				
 				printf("Reload web\n");
@@ -197,4 +202,3 @@ int main(int argc, char *argv[]){
 
 	return 0;
 }
-
